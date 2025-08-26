@@ -1,15 +1,23 @@
 package com.example.userservice.model;
 
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+
+@Entity
+@Table(name = "users")
 public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotBlank(message = "Name is required")
+    @Column(nullable = false)
     private String name;
 
     @Email(message = "Email should be valid")
+    @Column(nullable = false, unique = true)
     private String email;
 
 

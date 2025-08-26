@@ -3,7 +3,7 @@ package com.example.userservice.service;
 import com.example.userservice.exception.NotFoundException;
 import com.example.userservice.model.User;
 import org.springframework.stereotype.Service;
-
+import com.example.userservice.repository.UserRepository;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,37 +14,36 @@ import java.util.concurrent.atomic.AtomicLong;
 @Service
 public class UserService {
 
-    private final Map<Long, User> store = new ConcurrentHashMap<>();
-    private final AtomicLong idSeq = new AtomicLong(0);
+    private final UserRepository repo;
+    public UserService(UserRepository repo) { this.repo = repo; }
 
     public List<User> getAll() {
-        return new ArrayList<>(store.values());
+        return repo.findAll();
     }
 
     public User getById(Long id) {
-        User u = store.get(id);
-        if (u == null) throw new NotFoundException("User " + id + " not found");
-        return u;
+        return repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User " + id + " not found"));
     }
 
     public User create(User user) {
-        long id = idSeq.incrementAndGet();
-        user.setId(id);
-        store.put(id, user);
-        System.out.println(user +" "+ store.get(id));
-        return user;
+        repo.findByEmail(user.getEmail()).ifPresent(u -> {
+            throw new RuntimeException("Email already exists");
+        });
+        return repo.save(user);
     }
 
     public User update(Long id, User patch) {
-        return store.compute(id, (k, existing) -> {
-            if (existing == null) throw new NotFoundException("User " + id + " not found");
-            if (patch.getName() != null) existing.setName(patch.getName());
-            if (patch.getEmail() != null) existing.setEmail(patch.getEmail());
-            return existing;
-        });
+        User existing = getById(id);
+        if (patch.getName() != null)  existing.setName(patch.getName());
+        if (patch.getEmail() != null) existing.setEmail(patch.getEmail());
+        return repo.save(existing);
     }
 
     public void delete(Long id) {
-        if (store.remove(id) == null) throw new NotFoundException("User " + id + " not found");
+        if (!repo.existsById(id)) {
+            throw new RuntimeException("User " + id + " not found");
+        }
+        repo.deleteById(id);
     }
 }
